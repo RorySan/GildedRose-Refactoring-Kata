@@ -1,9 +1,22 @@
-﻿namespace GildedRose
+﻿module GildedRose
 
 open System.Collections.Generic
 
 type Item = { Name: string; SellIn: int; Quality: int }
 
+
+let reduceQuality item =
+    { item with Quality = item.Quality - 1}
+    
+let reduceSellin item =
+    { item with SellIn = item.SellIn - 1 }
+   
+let updateQuality items =
+    items
+    |> Seq.map reduceQuality
+    |> Seq.map reduceSellin
+    
+    
 type GildedRose(items:IList<Item>) =
     let Items = items
 

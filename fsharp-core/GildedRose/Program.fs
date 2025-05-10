@@ -1,89 +1,74 @@
 ﻿module GildedRose
-
 open System.Collections.Generic
 
 type Item = { Name: string; SellIn: int; Quality: int }
-type Regular = RegularItem of Item
-type BetterWithAge = BetterWithAgeItem of Item
-type ExactDate = ExactDateItem of Item
-type Legendary = LegendaryItem of Item
-type Conjured = ConjuredItem of Item
 
 type ClassifiedItem =
-    | Regular of Regular
-    | BetterWithAge of BetterWithAge
-    | ExactDate of ExactDate
-    | Legendary of Legendary
-    | Conjured of Conjured
+    | Regular of Item
+    | BetterWithAge of Item
+    | ExactDate of Item
+    | Legendary of Item
+    | Conjured of Item
     
+// this hardcoded classification would come from the datastore
 let classifyByName item =
     match item.Name with
-    | "Aged Brie" -> BetterWithAge (BetterWithAgeItem item)
-    | "Sulfuras, Hand of Ragnaros" -> Legendary (LegendaryItem item)
-    | "Backstage passes to a TAFKAL80ETC concert" -> ExactDate (ExactDateItem item)
-    | "Conjured Mana Cake" -> Conjured (ConjuredItem item)
-    | _ -> Regular (RegularItem item)
-
-let pastDue item =
-    item.SellIn < 0
+    | "Aged Brie" -> BetterWithAge item
+    | "Sulfuras, Hand of Ragnaros" -> Legendary item
+    | "Backstage passes to a TAFKAL80ETC concert" -> ExactDate item
+    | "Conjured Mana Cake" -> Conjured item
+    | _ -> Regular item
 
 let reduceQuality reduceBy item =
-    { item with Quality = max 0 (item.Quality - reduceBy)}
+    { item with Quality = max 0 (item.Quality - reduceBy) }
 let increaseQuality increaseBy item =
     { item with Quality = min 50 (item.Quality + increaseBy) }
-    
-let reduceSellin item =
-    { item with SellIn = item.SellIn - 1 }       
-   
-let processRegularItem (RegularItem item) =
-    match item with
-    | item when item.SellIn <= 0 -> item |> reduceQuality 2
-    | _ -> item |> reduceQuality 1
-    |> reduceSellin
-    
-let processBetterWithAgeItem (BetterWithAgeItem item) =
-    match item with
-    | item when item.SellIn <= 0 -> item |> increaseQuality 2
-    | _ -> item |> increaseQuality 1    
-    |> reduceSellin
-    
-let processExactDateItem (ExactDateItem item) =
-    match item with
-    | item when item.SellIn <= 0 -> {item with Quality = 0}    
-    | item when item.SellIn <= 5 -> item |> increaseQuality 3
-    | item when item.SellIn <= 10 -> item |> increaseQuality 2    
-    | item -> item |> increaseQuality 1
-    |> reduceSellin
-    
-let processLegendaryItem (LegendaryItem item) =
-    item
-    
-let processConjuredItem (ConjuredItem item) =
-    item
-    |> reduceQuality 2
-    |> reduceSellin
- 
-let processItem item =
-    match item with
-    | Regular item ->
-        processRegularItem item
-    | BetterWithAge item ->
-        processBetterWithAgeItem item        
-    | ExactDate item ->
-        processExactDateItem item        
-    | Legendary item ->
-        processLegendaryItem item
-    | Conjured item ->
-        processConjuredItem item    
+let reduceSellIn item =
+    { item with SellIn = item.SellIn - 1 }    
+let isExpired item =
+    item.SellIn <= 0
 
-let updateDay (items : Item list) =
-    items
-    |> List.map classifyByName
-    |> List.map processItem
+let processItem item =
     
+    let processRegularItem item =
+        let qualityLoss = if isExpired item then 2 else 1
+        item |> reduceQuality qualityLoss |> reduceSellIn
+
+    let processBetterWithAgeItem item =
+        let qualityGain = if isExpired item then 2 else 1
+        item |> increaseQuality qualityGain |> reduceSellIn
+
+    let processExactDateItem item =
+        let daysLeft n = item.SellIn <= n
+        match true with
+            | _ when isExpired item -> { item with Quality = 0 }
+            | _ when daysLeft 5 -> item |> increaseQuality 3
+            | _ when daysLeft 10 -> item |> increaseQuality 2
+            | _ -> item |> increaseQuality 1
+        |> reduceSellIn
+
+    let processLegendaryItem item = item
+
+    let processConjuredItem item =
+        let loss = if isExpired item then 4 else 2
+        item |> reduceQuality loss |> reduceSellIn
+        
+    match item with
+    | Regular item -> processRegularItem item
+    | BetterWithAge item -> processBetterWithAgeItem item
+    | ExactDate item -> processExactDateItem item
+    | Legendary item -> processLegendaryItem item
+    | Conjured item -> processConjuredItem item
+
+let updateItem item =
+    item |> classifyByName |> processItem
+
+let updateDay = List.map updateItem
+
 let updatePeriod days initialItems =
     [1 .. days]
     |> List.scan (fun items _ -> updateDay items) initialItems
+
 
 module Program =
     [<EntryPoint>]   
@@ -101,7 +86,7 @@ module Program =
         Items.Add({Name = "Backstage passes to a TAFKAL80ETC concert"; SellIn = 5; Quality = 49})
         Items.Add({Name = "Conjured Mana Cake"; SellIn = 3; Quality = 6})
                 
-        updatePeriod 30 (Items |> Seq.toList)
+        updatePeriod 30 (Items |> List.ofSeq)
             |> List.iteri (fun day items ->
                 printfn "-------- day %d --------" day
                 printfn "name, sellIn, quality"

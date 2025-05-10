@@ -17,3 +17,4 @@ let ``Thirty day report is correct`` () =
     let actual = fakeoutput.ToString()
 
     Assert.Equal(expected, actual)
+

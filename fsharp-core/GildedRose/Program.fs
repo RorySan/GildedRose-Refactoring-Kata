@@ -3,57 +3,91 @@
 open System.Collections.Generic
 
 type Item = { Name: string; SellIn: int; Quality: int }
+type Regular = RegularItem of Item
+type BetterWithAge = BetterWithAgeItem of Item
+type ExactDate = ExactDateItem of Item
+type Legendary = LegendaryItem of Item
+type Conjured = ConjuredItem of Item
 
+type ClassifiedItem =
+    | Regular of Regular
+    | BetterWithAge of BetterWithAge
+    | ExactDate of ExactDate
+    | Legendary of Legendary
+    | Conjured of Conjured
+    
+let classifyByName item =
+    match item.Name with
+    | "Aged Brie" -> BetterWithAge (BetterWithAgeItem item)
+    | "Sulfuras, Hand of Ragnaros" -> Legendary (LegendaryItem item)
+    | "Backstage passes to a TAFKAL80ETC concert" -> ExactDate (ExactDateItem item)
+    | "Conjured Mana Cake" -> Conjured (ConjuredItem item)
+    | _ -> Regular (RegularItem item)
 
-let reduceQuality item =
-    { item with Quality = item.Quality - 1}
+let pastDue item =
+    item.SellIn < 0
+
+let reduceQuality reduceBy item =
+    { item with Quality = max 0 (item.Quality - reduceBy)}
+let increaseQuality increaseBy item =
+    { item with Quality = min 50 (item.Quality + increaseBy) }
     
 let reduceSellin item =
-    { item with SellIn = item.SellIn - 1 }
+    { item with SellIn = item.SellIn - 1 }       
    
-let updateQuality items =
+let processRegularItem (RegularItem item) =
+    match item with
+    | item when item.SellIn <= 0 -> item |> reduceQuality 2
+    | _ -> item |> reduceQuality 1
+    |> reduceSellin
+    
+let processBetterWithAgeItem (BetterWithAgeItem item) =
+    match item with
+    | item when item.SellIn <= 0 -> item |> increaseQuality 2
+    | _ -> item |> increaseQuality 1    
+    |> reduceSellin
+    
+let processExactDateItem (ExactDateItem item) =
+    match item with
+    | item when item.SellIn <= 0 -> {item with Quality = 0}    
+    | item when item.SellIn <= 5 -> item |> increaseQuality 3
+    | item when item.SellIn <= 10 -> item |> increaseQuality 2    
+    | item -> item |> increaseQuality 1
+    |> reduceSellin
+    
+let processLegendaryItem (LegendaryItem item) =
+    item
+    
+let processConjuredItem (ConjuredItem item) =
+    item
+    |> reduceQuality 2
+    |> reduceSellin
+ 
+let processItem item =
+    match item with
+    | Regular item ->
+        processRegularItem item
+    | BetterWithAge item ->
+        processBetterWithAgeItem item        
+    | ExactDate item ->
+        processExactDateItem item        
+    | Legendary item ->
+        processLegendaryItem item
+    | Conjured item ->
+        processConjuredItem item    
+
+let updateDay (items : Item list) =
     items
-    |> Seq.map reduceQuality
-    |> Seq.map reduceSellin
+    |> List.map classifyByName
+    |> List.map processItem
     
-    
-type GildedRose(items:IList<Item>) =
-    let Items = items
-
-    member this.UpdateQuality() =
-        for i = 0 to Items.Count - 1 do
-            if Items.[i].Name <> "Aged Brie" && Items.[i].Name <> "Backstage passes to a TAFKAL80ETC concert" then
-                if Items.[i].Quality > 0 then
-                    if Items.[i].Name <> "Sulfuras, Hand of Ragnaros" then
-                        Items.[i] <- { Items.[i] with Quality = (Items.[i].Quality - 1) } 
-            else
-               if Items.[i].Quality < 50 then
-                    Items.[i] <- { Items.[i] with Quality = (Items.[i].Quality + 1) } 
-                    if Items.[i].Name = "Backstage passes to a TAFKAL80ETC concert" then
-                        if Items.[i].SellIn < 11 then
-                            if Items.[i].Quality < 50 then
-                                Items.[i] <- { Items.[i] with Quality = (Items.[i].Quality + 1) } 
-                        if Items.[i].SellIn < 6 then
-                            if Items.[i].Quality < 50 then
-                                Items.[i] <- { Items.[i] with Quality = (Items.[i].Quality + 1) } 
-            if Items.[i].Name <> "Sulfuras, Hand of Ragnaros" then                 
-                Items.[i] <- { Items.[i] with SellIn  = (Items.[i].SellIn - 1) } 
-            if Items.[i].SellIn < 0 then
-                if Items.[i].Name <> "Aged Brie" then
-                    if Items.[i].Name <> "Backstage passes to a TAFKAL80ETC concert" then
-                        if Items.[i].Quality > 0 then
-                            if Items.[i].Name <> "Sulfuras, Hand of Ragnaros" then
-                                Items.[i] <- { Items.[i] with Quality   = (Items.[i].Quality  - 1) } 
-                    else
-                        Items.[i] <- { Items.[i] with Quality   = (Items.[i].Quality  - Items.[i].Quality) } 
-                else
-                    if Items.[i].Quality < 50 then
-                        Items.[i] <- { Items.[i] with Quality   = (Items.[i].Quality + 1) }  
-        ()
-
+let updatePeriod days initialItems =
+    [1 .. days]
+    |> List.scan (fun items _ -> updateDay items) initialItems
 
 module Program =
-    [<EntryPoint>]
+    [<EntryPoint>]   
+          
     let main argv =
         printfn "OMGHAI!"
         let Items = new List<Item>()
@@ -66,13 +100,13 @@ module Program =
         Items.Add({Name = "Backstage passes to a TAFKAL80ETC concert"; SellIn = 10; Quality = 49})
         Items.Add({Name = "Backstage passes to a TAFKAL80ETC concert"; SellIn = 5; Quality = 49})
         Items.Add({Name = "Conjured Mana Cake"; SellIn = 3; Quality = 6})
-
-        let app = new GildedRose(Items)
-        for i = 0 to 30 do
-            printfn "-------- day %d --------" i
-            printfn "name, sellIn, quality"
-            for j = 0 to Items.Count - 1 do
-                 printfn "%s, %d, %d" Items.[j].Name Items.[j].SellIn Items.[j].Quality
-            printfn ""
-            app.UpdateQuality()
+                
+        updatePeriod 30 (Items |> Seq.toList)
+            |> List.iteri (fun day items ->
+                printfn "-------- day %d --------" day
+                printfn "name, sellIn, quality"
+                items
+                |> List.iter (fun item ->
+                    printfn "%s, %d, %d" item.Name item.SellIn item.Quality)
+                printfn "")
         0 

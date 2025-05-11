@@ -47,31 +47,31 @@ let ``Better with age item quality increases on update`` () =
     
 [<Fact>]
 let ``Better with age item quality increases twice as fast after sellin`` () =    
-    let item = BetterWithAge {Name = "Item"; Quality = 10; SellIn = 0}
+    let item = BetterWithAge {baseItem with Quality = 10; SellIn = 0}
     let updatedItem = processItem item    
     test <@ 12 = updatedItem.Quality @>
     
 [<Fact>]
-let ``ExactDate item quality increases on update`` () =
+let ``ExactDate item quality increases 1 on update`` () =
     let item = ExactDate {baseItem with Quality = 10}
     let updatedItem = processItem item
     test <@ 11 = updatedItem.Quality @>
     
 [<Fact>]
-let ``ExactDate item quality increases twice as fast 10 days from the date`` () =
-    let item = ExactDate {Name = "foo"; SellIn = 10; Quality = 30}
+let ``ExactDate item quality increases 2 when 10 days from the date`` () =
+    let item = ExactDate {baseItem with Quality = 30}
     let updatedItem = processItem item
     test <@ 32 = updatedItem.Quality @>
 
 [<Fact>]
-let ``ExactDate item quality increases thrice as fast 5 days from the date`` () =
-    let item = ExactDate {Name = "foo"; SellIn = 5; Quality = 30}
+let ``ExactDate item quality increases 3 when 5 days from the date`` () =
+    let item = ExactDate {baseItem with SellIn = 5; Quality = 30}
     let updatedItem = processItem item
     test <@ 33 = updatedItem.Quality @>
 
 [<Fact>]
 let ``ExactDate item quality drops to 0 after the date`` () =
-    let item = ExactDate {Name = "foo"; SellIn = 0; Quality = 30}
+    let item = ExactDate {baseItem with SellIn = 0; Quality = 30}
     let updatedItem = processItem item
     test <@ 0 = updatedItem.Quality @>
     
@@ -82,7 +82,7 @@ let ``ExactDate item sellin reduces on update`` () =
     test <@ 9 = updatedItem.SellIn @>
 
 [<Fact>]
-let ``Conjured items quality reduces twice as fast`` () =
+let ``Conjured items quality reduces 2 per update`` () =
     let item = Conjured {baseItem with Quality = 10}
     let updatedItem = processItem item
     test <@ 8 = updatedItem.Quality @>

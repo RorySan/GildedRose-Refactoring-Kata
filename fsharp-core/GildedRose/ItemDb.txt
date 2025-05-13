@@ -1,0 +1,8 @@
+Simulates the Gilded Rose inventory system:
+
+Aged Brie -> BetterWithAge
+Sulfuras, Hand of Ragnaros -> Legendary
+Backstage passes to a TAFKAL80ETC concert -> CountdownSpecial
+Conjured Mana Cake -> Conjured
++5 Dexterity Vest -> Regular
+Elixir of the Mongoose -> Regular
